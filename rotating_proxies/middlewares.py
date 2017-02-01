@@ -211,7 +211,6 @@ class BanDetectionMiddleware(object):
 
     These methods can return True (ban detected), False (not a ban) or
     None (unknown).
-
     """
     def process_response(self, request, response, spider):
         ban = (response.status != 200) or (not len(response.body))
