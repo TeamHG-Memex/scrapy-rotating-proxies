@@ -213,16 +213,31 @@ class BanDetectionMiddleware(object):
     """
     NOT_BAN_STATUSES = {200, 301, 302}
 
+    def __init__(self, stats):
+        self.stats = stats
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(crawler.stats)
+
     def process_response(self, request, response, spider):
         ban = (response.status not in self.NOT_BAN_STATUSES) or \
               (not len(response.body))
         if hasattr(spider, 'response_is_ban'):
             ban = spider.response_is_ban(request, response)
         request.meta['_ban'] = ban
+        if ban:
+            self.stats.inc_value("bans/status/%s" % response.status)
+            if not len(response.body):
+                self.stats.inc_value("bans/empty")
         return response
 
     def process_exception(self, request, exception, spider):
         ban = True
         if hasattr(spider, 'exception_is_ban'):
             ban = spider.exception_is_ban(request, exception)
+        if ban:
+            ex_class = "%s.%s" % (exception.__class__.__module__,
+                                  exception.__class__.__name__)
+            self.stats.inc_value("bans/error/%s" % ex_class)
         request.meta['_ban'] = ban
