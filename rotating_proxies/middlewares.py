@@ -4,7 +4,6 @@ import logging
 from functools import partial
 from six.moves.urllib.parse import urlsplit
 
-import scrapy
 from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy import signals
 from scrapy.utils.url import add_http_if_no_scheme
@@ -212,8 +211,11 @@ class BanDetectionMiddleware(object):
     These methods can return True (ban detected), False (not a ban) or
     None (unknown).
     """
+    NOT_BAN_STATUSES = {200, 301, 302}
+
     def process_response(self, request, response, spider):
-        ban = (response.status != 200) or (not len(response.body))
+        ban = (response.status not in self.NOT_BAN_STATUSES) or \
+              (not len(response.body))
         if hasattr(spider, 'response_is_ban'):
             ban = spider.response_is_ban(request, response)
         request.meta['_ban'] = ban
