@@ -116,6 +116,17 @@ Settings
 * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
   Default is 300 (i.e. 5 min).
 
+FAQ
+---
+
+Q: Where to get proxy lists? How to write and maintain ban rules?
+
+A: It is up to you to find proxies and maintain proper ban rules
+for web sites; ``scrapy-rotating-proxies`` doesn't have anything built-in.
+There are commercial proxy services like https://crawlera.com/ which can
+integrate with Scrapy (see https://github.com/scrapy-plugins/scrapy-crawlera)
+and take care of all these details.
+
 Contributing
 ------------
 
