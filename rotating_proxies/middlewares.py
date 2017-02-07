@@ -52,7 +52,9 @@ class RotatingProxyMiddleware(object):
       alive proxies all dead proxies are re-checked.
     * ``ROTATING_PROXY_PAGE_RETRY_TIMES`` - a number of times to retry
       downloading a page using a different proxy. After this amount of retries
-      failure is considered a page failure, not a proxy failure. Default: 15.
+      failure is considered a page failure, not a proxy failure.
+      Think of it this way: every improperly detected ban cost you
+      ``ROTATING_PROXY_PAGE_RETRY_TIMES`` alive proxies. Default: 5.
     * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
       Default is 300 (i.e. 5 min).
     """
@@ -77,7 +79,7 @@ class RotatingProxyMiddleware(object):
             proxy_list=proxy_list,
             logstats_interval=s.getfloat('ROTATING_PROXY_LOGSTATS_INTERVAL', 30),
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
-            max_page_retry_times=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 10),
+            max_page_retry_times=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300)
         )
         crawler.signals.connect(mw.engine_started,
