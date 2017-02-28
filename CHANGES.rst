@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.2.2 (2017-03-01)
+------------------
+
+* Update default ban detection rules: scrapy.exceptions.IgnoreRequest
+  is not a ban.
+
 0.2.1 (2017-02-08)
 ------------------
 
