@@ -7,6 +7,7 @@ from six.moves.urllib.parse import urlsplit
 from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy import signals
 from scrapy.utils.url import add_http_if_no_scheme
+from scrapy.exceptions import IgnoreRequest
 from twisted.internet import task
 
 from .expire import Proxies, exp_backoff_full_jitter
@@ -214,6 +215,7 @@ class BanDetectionMiddleware(object):
     None (unknown).
     """
     NOT_BAN_STATUSES = {200, 301, 302}
+    NOT_BAN_EXCEPTIONS = (IgnoreRequest,)
 
     def __init__(self, stats):
         self.stats = stats
@@ -235,7 +237,7 @@ class BanDetectionMiddleware(object):
         return response
 
     def process_exception(self, request, exception, spider):
-        ban = True
+        ban = not isinstance(exception, self.NOT_BAN_EXCEPTIONS)
         if hasattr(spider, 'exception_is_ban'):
             ban = spider.exception_is_ban(request, exception)
         if ban:
