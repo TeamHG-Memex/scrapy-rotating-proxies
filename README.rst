@@ -57,6 +57,15 @@ Then add rotating_proxies middlewares to your DOWNLOADER_MIDDLEWARES::
       # ...
    }
 
+After this all requests will be proxied using one of the proxies from
+the ``ROTATING_PROXY_LIST``.
+
+Requests with "proxy" set in their meta are not handled by
+scrapy-rotating-proxies. To disable proxying for a request set
+``request.meta['proxy'] = None``; to set proxy explicitly use
+``request.meta['proxy'] = "<my-proxy-address>"``.
+
+
 Concurrency
 -----------
 
