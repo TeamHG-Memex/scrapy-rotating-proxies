@@ -32,30 +32,30 @@ Usage
 
 Add ``ROTATING_PROXY_LIST`` option with a list of proxies to settings.py::
 
-   ROTATING_PROXY_LIST = [
-      'proxy1.com:8000',
-      'proxy2.com:8031',
-      # ...
-   ]
+    ROTATING_PROXY_LIST = [
+        'proxy1.com:8000',
+        'proxy2.com:8031',
+        # ...
+    ]
 
 You can load it from file if needed::
 
-   def load_lines(path):
-      with open(path, 'rb') as f:
-         return [line.strip() for line in
-                 f.read().decode('utf8').splitlines()
-                 if line.strip()]
+    def load_lines(path):
+        with open(path, 'rb') as f:
+            return [line.strip() for line in
+                    f.read().decode('utf8').splitlines()
+                    if line.strip()]
 
-   ROTATING_PROXY_LIST = load_lines('/my/path/proxies.txt')
+    ROTATING_PROXY_LIST = load_lines('/my/path/proxies.txt')
 
 Then add rotating_proxies middlewares to your DOWNLOADER_MIDDLEWARES::
 
-   DOWNLOADER_MIDDLEWARES = {
-      # ...
-      'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
-      'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
-      # ...
-   }
+    DOWNLOADER_MIDDLEWARES = {
+        # ...
+        'rotating_proxies.middlewares.RotatingProxyMiddleware': 610,
+        'rotating_proxies.middlewares.BanDetectionMiddleware': 620,
+        # ...
+    }
 
 After this all requests will be proxied using one of the proxies from
 the ``ROTATING_PROXY_LIST``.
@@ -89,14 +89,13 @@ there was an exception then proxy is considered dead.
 To customize this with site-specific rules define ``response_is_ban``
 and/or ``exception_is_ban`` spider methods::
 
-   class MySpider(scrapy.spider):
-      # ...
+    class MySpider(scrapy.spider):
+        # ...
+        def response_is_ban(self, request, response):
+            return b'banned' in response.body
 
-      def response_is_ban(self, request, response):
-         return b'banned' in response.body
-
-      def exception_is_ban(self, request, exception):
-         return None
+        def exception_is_ban(self, request, exception):
+            return None
 
 It is important to have these rules correct because action for a failed
 request and a bad proxy should be different: if it is a proxy to blame
