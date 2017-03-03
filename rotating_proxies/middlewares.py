@@ -60,7 +60,7 @@ class RotatingProxyMiddleware(object):
       Default is 300 (i.e. 5 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_page_retry_times, backoff_base):
+                 max_proxies_to_try, backoff_base):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
@@ -68,7 +68,7 @@ class RotatingProxyMiddleware(object):
         self.logstats_interval = logstats_interval
         self.reanimate_interval = 5
         self.stop_if_no_proxies = stop_if_no_proxies
-        self.max_page_retry_times = max_page_retry_times
+        self.max_proxies_to_try = max_proxies_to_try
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -80,7 +80,7 @@ class RotatingProxyMiddleware(object):
             proxy_list=proxy_list,
             logstats_interval=s.getfloat('ROTATING_PROXY_LOGSTATS_INTERVAL', 30),
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
-            max_page_retry_times=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
+            max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300)
         )
         crawler.signals.connect(mw.engine_started,
@@ -155,11 +155,15 @@ class RotatingProxyMiddleware(object):
 
     def _retry(self, request, spider):
         retries = request.meta.get('proxy_retry_times', 0) + 1
+        max_proxies_to_try = request.meta.get('max_proxies_to_try',
+                                              self.max_proxies_to_try)
 
-        if retries <= self.max_page_retry_times:
+        if retries <= max_proxies_to_try:
             logger.debug("Retrying %(request)s with another proxy "
-                         "(failed %(retries)d times)",
-                         {'request': request, 'retries': retries},
+                         "(failed %(retries)d times, "
+                         "max retries: %(max_proxies_to_try)d)",
+                         {'request': request, 'retries': retries,
+                          'max_proxies_to_try': max_proxies_to_try},
                          extra={'spider': spider})
             retryreq = request.copy()
             retryreq.meta['proxy_retry_times'] = retries

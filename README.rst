@@ -121,8 +121,13 @@ Settings
   failure is considered a page failure, not a proxy failure.
   Think of it this way: every improperly detected ban cost you
   ``ROTATING_PROXY_PAGE_RETRY_TIMES`` alive proxies. Default: 5.
+
+  It is possible to change this option per-request using
+  ``max_proxies_to_try`` request.meta key - for example, you can use a higher
+  value for certain pages if you're sure they should work.
 * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
   Default is 300 (i.e. 5 min).
+
 
 FAQ
 ---
