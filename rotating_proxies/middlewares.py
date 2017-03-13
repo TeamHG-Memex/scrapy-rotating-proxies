@@ -230,7 +230,7 @@ class BanDetectionMiddleware(object):
 
     def process_response(self, request, response, spider):
         ban = (response.status not in self.NOT_BAN_STATUSES) or \
-              (not len(response.body))
+              (response.status==200 and not len(response.body))
         if hasattr(spider, 'response_is_ban'):
             ban = spider.response_is_ban(request, response)
         request.meta['_ban'] = ban
