@@ -1,6 +1,14 @@
 CHANGES
 =======
 
+0.3 (2017-03-14)
+----------------
+
+* redirects with empty bodies are no longer considered bans
+  (thanks Diga Widyaprana).
+* ``ROTATING_PROXY_BAN_POLICY`` option allows to customize ban detection
+  for all spiders.
+
 0.2.3 (2017-03-03)
 ------------------
 
