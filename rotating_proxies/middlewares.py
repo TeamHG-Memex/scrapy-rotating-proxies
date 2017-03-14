@@ -6,6 +6,7 @@ from six.moves.urllib.parse import urlsplit
 
 from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy import signals
+from scrapy.utils.misc import load_object
 from scrapy.utils.url import add_http_if_no_scheme
 from scrapy.exceptions import IgnoreRequest
 from twisted.internet import task
@@ -202,11 +203,36 @@ class BanDetectionMiddleware(object):
         }
 
     By default, client is considered banned if a request failed, and alive
-    if a response was received. This can be overridden in a spider using
-    ``response_is_ban`` and ``exception_is_ban`` spider methods, for
-    example::
+    if a response was received. You can override ban detection method by
+    passing a path to a custom BanDectionPolicy in 
+    ``ROTATING_PROXY_BAN_POLICY``, e.g.::
+      
+    ROTATING_PROXY_BAN_POLICY = 'myproject.policy.MyBanPolicy'
+    
+    The policy must be a class with ``response_is_ban``  
+    and ``exception_is_ban`` methods. These methods can return True 
+    (ban detected), False (not a ban) or None (unknown). It can be convenient
+    to subclass and modify default BanDetectionPolicy::
+        
+        # myproject/policy.py
+        from rotating_proxies.policy import BanDetectionPolicy
+        
+        class MyPolicy(BanDetectionPolicy):
+            def response_is_ban(self, request, response):
+                # use default rules, but also consider HTTP 200 responses
+                # a ban if there is 'captcha' word in response body.
+                ban = super(MyPolicy, self).response_is_ban(request, response)
+                ban = ban or b'captcha' in response.body
+                return ban
+                
+            def exception_is_ban(self, request, exception):
+                # override method completely: don't take exceptions in account
+                return None
+        
+    Instead of creating a policy you can also implement ``response_is_ban`` 
+    and ``exception_is_ban`` methods as spider methods, for example::
 
-        class MySpider(scrapy.spider):
+        class MySpider(scrapy.Spider):
             # ...
 
             def response_is_ban(self, request, response):
@@ -214,25 +240,32 @@ class BanDetectionMiddleware(object):
 
             def exception_is_ban(self, request, exception):
                 return None
-
-    These methods can return True (ban detected), False (not a ban) or
-    None (unknown).
+     
     """
-    NOT_BAN_STATUSES = {200, 301, 302}
-    NOT_BAN_EXCEPTIONS = (IgnoreRequest,)
-
-    def __init__(self, stats):
+    def __init__(self, stats, policy):
         self.stats = stats
+        self.policy = policy
 
     @classmethod
     def from_crawler(cls, crawler):
-        return cls(crawler.stats)
+        return cls(crawler.stats, cls._load_policy(crawler))
+
+    @classmethod
+    def _load_policy(cls, crawler):
+        policy_path = crawler.settings.get(
+            'ROTATING_PROXY_BAN_POLICY',
+            'rotating_proxies.policy.BanDetectionPolicy'
+        )
+        policy_cls = load_object(policy_path)
+        if hasattr(policy_cls, 'from_crawler'):
+            return policy_cls.from_crawler(crawler)
+        else:
+            return policy_cls()
 
     def process_response(self, request, response, spider):
-        ban = (response.status not in self.NOT_BAN_STATUSES) or \
-              (response.status==200 and not len(response.body))
-        if hasattr(spider, 'response_is_ban'):
-            ban = spider.response_is_ban(request, response)
+        is_ban = getattr(spider, 'response_is_ban',
+                         self.policy.response_is_ban)
+        ban = is_ban(request, response)
         request.meta['_ban'] = ban
         if ban:
             self.stats.inc_value("bans/status/%s" % response.status)
@@ -241,9 +274,9 @@ class BanDetectionMiddleware(object):
         return response
 
     def process_exception(self, request, exception, spider):
-        ban = not isinstance(exception, self.NOT_BAN_EXCEPTIONS)
-        if hasattr(spider, 'exception_is_ban'):
-            ban = spider.exception_is_ban(request, exception)
+        is_ban = getattr(spider, 'exception_is_ban',
+                         self.policy.exception_is_ban)
+        ban = is_ban(request, exception)
         if ban:
             ex_class = "%s.%s" % (exception.__class__.__module__,
                                   exception.__class__.__name__)

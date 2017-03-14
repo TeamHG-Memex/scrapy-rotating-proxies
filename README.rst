@@ -86,11 +86,39 @@ Detection of a non-working proxy is site-specific.
 By default, ``scrapy-rotating-proxies`` uses a simple heuristic:
 if a response status code is not 200, response body is empty or if
 there was an exception then proxy is considered dead.
-To customize this with site-specific rules define ``response_is_ban``
-and/or ``exception_is_ban`` spider methods::
 
-    class MySpider(scrapy.spider):
+You can override ban detection method by passing a path to
+a custom BanDectionPolicy in ``ROTATING_PROXY_BAN_POLICY`` option, e.g.::
+
+    # settings.py
+    ROTATING_PROXY_BAN_POLICY = 'myproject.policy.MyBanPolicy'
+
+The policy must be a class with ``response_is_ban``
+and ``exception_is_ban`` methods. These methods can return True
+(ban detected), False (not a ban) or None (unknown). It can be convenient
+to subclass and modify default BanDetectionPolicy::
+
+    # myproject/policy.py
+    from rotating_proxies.policy import BanDetectionPolicy
+
+    class MyPolicy(BanDetectionPolicy):
+        def response_is_ban(self, request, response):
+            # use default rules, but also consider HTTP 200 responses
+            # a ban if there is 'captcha' word in response body.
+            ban = super(MyPolicy, self).response_is_ban(request, response)
+            ban = ban or b'captcha' in response.body
+            return ban
+
+        def exception_is_ban(self, request, exception):
+            # override method completely: don't take exceptions in account
+            return None
+
+Instead of creating a policy you can also implement ``response_is_ban``
+and ``exception_is_ban`` methods as spider methods, for example::
+
+    class MySpider(scrapy.Spider):
         # ...
+
         def response_is_ban(self, request, response):
             return b'banned' in response.body
 
@@ -127,6 +155,8 @@ Settings
   value for certain pages if you're sure they should work.
 * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
   Default is 300 (i.e. 5 min).
+* ``ROTATING_PROXY_BAN_POLICY`` - path to a ban detection policy.
+  Default is ``'rotating_proxies.policy.BanDetectionPolicy'``.
 
 
 FAQ
