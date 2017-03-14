@@ -8,7 +8,6 @@ from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy import signals
 from scrapy.utils.misc import load_object
 from scrapy.utils.url import add_http_if_no_scheme
-from scrapy.exceptions import IgnoreRequest
 from twisted.internet import task
 
 from .expire import Proxies, exp_backoff_full_jitter
