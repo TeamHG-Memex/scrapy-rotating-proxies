@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.3.1 (2017-03-20)
+------------------
+
+* fixed OverflowError during backoff computation.
+
 0.3 (2017-03-14)
 ----------------
 
