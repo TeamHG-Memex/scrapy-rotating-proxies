@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import division
 import time
 import random
 import logging
+import math
 
 import attr
 
@@ -127,7 +129,12 @@ class ProxyState(object):
 
 def exp_backoff(attempt, cap=3600, base=300):
     """ Exponential backoff time """
-    return min(cap, base * 2 ** attempt)
+    # this is a numerically stable version of
+    # min(cap, base * 2 ** attempt)
+    max_attempts = math.log(cap / base, 2)
+    if attempt <= max_attempts:
+        return base * 2 ** attempt
+    return cap
 
 
 def exp_backoff_full_jitter(*args, **kwargs):
