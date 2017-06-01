@@ -8,6 +8,11 @@ def test_proxies():
     proxy = p.get_random()
     assert proxy in proxy_list
 
+    proxy = p.get_proxy('foo')
+    assert proxy in proxy_list
+    proxy = p.get_proxy('wom')
+    assert not proxy
+
     p.mark_dead('bar')
     p.mark_dead('baz')
 
@@ -19,6 +24,11 @@ def test_proxies():
     p.mark_good('bar')
     assert p.get_random() == 'bar'
 
+def test_auth_proxies():
+    proxy_list = ['http://foo:bar@baz:1234']
+    p = Proxies(proxy_list)
+    proxy = p.get_proxy('http://baz:1234')
+    assert proxy in proxy_list
 
 def test_reanimate_reset():
     p = Proxies(['foo', 'bar', 'baz'])

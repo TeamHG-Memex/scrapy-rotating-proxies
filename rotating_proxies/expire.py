@@ -9,6 +9,10 @@ import attr
 
 logger = logging.getLogger(__name__)
 
+try:
+    from urllib2 import _parse_proxy
+except ImportError:
+    from urllib.request import _parse_proxy
 
 class Proxies(object):
     """
@@ -47,9 +51,19 @@ class Proxies(object):
             return None
         return random.choice(available)
 
+    def get_proxy(self, proxy_address):
+        """ Return complete proxy key associated with a given address """
+        proxy = proxy_address
+        if proxy and proxy not in self.proxies:
+            proxy_url_suffix = _parse_proxy(proxy)[-1]
+            proxy_matches = [s for s in self.proxies.keys() if proxy_url_suffix in s]
+            proxy = proxy_matches[0] if len(proxy_matches) > 0 else None
+        return proxy
+
     def mark_dead(self, proxy, _time=None):
         """ Mark a proxy as dead """
         if proxy not in self.proxies:
+            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
             return
 
         if proxy in self.good:
@@ -70,6 +84,7 @@ class Proxies(object):
     def mark_good(self, proxy):
         """ Mark a proxy as good """
         if proxy not in self.proxies:
+            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
             return
 
         if proxy not in self.good:
