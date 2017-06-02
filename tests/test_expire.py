@@ -27,6 +27,13 @@ def test_proxies():
 def test_auth_proxies():
     proxy_list = ['http://foo:bar@baz:1234']
     p = Proxies(proxy_list)
+
+    hostport = p._extract_hostport('zot:4321')
+    assert hostport == 'zot:4321'
+
+    hostport = p._extract_hostport('http://foo:bar@baz:1234')
+    assert hostport == 'baz:1234'
+
     proxy = p.get_proxy('http://baz:1234')
     assert proxy in proxy_list
 

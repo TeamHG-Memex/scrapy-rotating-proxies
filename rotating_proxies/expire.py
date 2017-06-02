@@ -38,8 +38,7 @@ class Proxies(object):
         self.proxies = {url: ProxyState() for url in proxy_list}
         self.proxies_by_hostport = {}
         for proxy in proxy_list:
-            parsed_proxy = _parse_proxy(proxy)
-            self.proxies_by_hostport[parsed_proxy[3]] = proxy
+            self.proxies_by_hostport[self._extract_hostport(proxy)] = proxy
 
         self.unchecked = set(self.proxies.keys())
         self.good = set()
@@ -48,6 +47,10 @@ class Proxies(object):
         if backoff is None:
             backoff = exp_backoff_full_jitter
         self.backoff = backoff
+
+    def _extract_hostport(self, proxy):
+        """ Return the hostport component from a given proxy """
+        return _parse_proxy(proxy)[3]
 
     def get_random(self):
         """ Return a random available proxy (either good or unchecked) """
@@ -60,9 +63,9 @@ class Proxies(object):
         """ Return complete proxy key associated with a given hostport """
         proxy = None
         if proxy_address:
-            parsed_proxy = _parse_proxy(proxy_address)
-            if parsed_proxy[3] in self.proxies_by_hostport:
-                proxy = self.proxies_by_hostport[parsed_proxy[3]]
+            hostport = self._extract_hostport(proxy_address)
+            if hostport in self.proxies_by_hostport:
+                proxy = self.proxies_by_hostport[hostport]
         return proxy
 
     def mark_dead(self, proxy, _time=None):
