@@ -36,6 +36,11 @@ class Proxies(object):
     """
     def __init__(self, proxy_list, backoff=None):
         self.proxies = {url: ProxyState() for url in proxy_list}
+        self.proxies_by_hostport = {}
+        for proxy in proxy_list:
+            parsed_proxy = _parse_proxy(proxy)
+            self.proxies_by_hostport[parsed_proxy[3]] = proxy
+
         self.unchecked = set(self.proxies.keys())
         self.good = set()
         self.dead = set()
@@ -52,12 +57,12 @@ class Proxies(object):
         return random.choice(available)
 
     def get_proxy(self, proxy_address):
-        """ Return complete proxy key associated with a given address """
-        proxy = proxy_address
-        if proxy and proxy not in self.proxies:
-            proxy_url_suffix = _parse_proxy(proxy)[-1]
-            proxy_matches = [s for s in self.proxies.keys() if proxy_url_suffix in s]
-            proxy = proxy_matches[0] if len(proxy_matches) > 0 else None
+        """ Return complete proxy key associated with a given hostport """
+        proxy = None
+        if proxy_address:
+            parsed_proxy = _parse_proxy(proxy_address)
+            if parsed_proxy[3] in self.proxies_by_hostport:
+                proxy = self.proxies_by_hostport[parsed_proxy[3]]
         return proxy
 
     def mark_dead(self, proxy, _time=None):
