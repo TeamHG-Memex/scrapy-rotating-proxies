@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-TBA
+0.3.2 (2017-06-05)
 ------------------
 
 * fixed proxy authentication issue.
