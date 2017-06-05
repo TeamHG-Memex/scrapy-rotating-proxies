@@ -58,11 +58,13 @@ class RotatingProxyMiddleware(object):
       ``ROTATING_PROXY_PAGE_RETRY_TIMES`` alive proxies. Default: 5.
     * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
       Default is 300 (i.e. 5 min).
+    * ``ROTATING_PROXY_BACKOFF_CAP`` - base backoff cap, in seconds.
+      Default is 3600 (i.e. 60 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_proxies_to_try, backoff_base):
+                 max_proxies_to_try, backoff_base, backoff_cap):
 
-        backoff = partial(exp_backoff_full_jitter, base=backoff_base)
+        backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
                                backoff=backoff)
         self.logstats_interval = logstats_interval
@@ -81,7 +83,8 @@ class RotatingProxyMiddleware(object):
             logstats_interval=s.getfloat('ROTATING_PROXY_LOGSTATS_INTERVAL', 30),
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
             max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
-            backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300)
+            backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300),
+            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600)
         )
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
