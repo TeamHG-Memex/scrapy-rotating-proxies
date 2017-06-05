@@ -143,7 +143,7 @@ class RotatingProxyMiddleware(object):
         return self._handle_result(request, spider) or response
 
     def _handle_result(self, request, spider):
-        proxy = request.meta.get('proxy', None)
+        proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
         ban = request.meta.get('_ban', None)

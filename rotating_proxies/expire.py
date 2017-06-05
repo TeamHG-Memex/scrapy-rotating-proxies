@@ -9,6 +9,10 @@ import attr
 
 logger = logging.getLogger(__name__)
 
+try:
+    from urllib2 import _parse_proxy
+except ImportError:
+    from urllib.request import _parse_proxy
 
 class Proxies(object):
     """
@@ -32,6 +36,10 @@ class Proxies(object):
     """
     def __init__(self, proxy_list, backoff=None):
         self.proxies = {url: ProxyState() for url in proxy_list}
+        self.proxies_by_hostport = {}
+        for proxy in proxy_list:
+            self.proxies_by_hostport[self._extract_hostport(proxy)] = proxy
+
         self.unchecked = set(self.proxies.keys())
         self.good = set()
         self.dead = set()
@@ -40,6 +48,10 @@ class Proxies(object):
             backoff = exp_backoff_full_jitter
         self.backoff = backoff
 
+    def _extract_hostport(self, proxy):
+        """ Return the hostport component from a given proxy """
+        return _parse_proxy(proxy)[3]
+
     def get_random(self):
         """ Return a random available proxy (either good or unchecked) """
         available = list(self.unchecked | self.good)
@@ -47,9 +59,19 @@ class Proxies(object):
             return None
         return random.choice(available)
 
+    def get_proxy(self, proxy_address):
+        """ Return complete proxy key associated with a given hostport """
+        proxy = None
+        if proxy_address:
+            hostport = self._extract_hostport(proxy_address)
+            if hostport in self.proxies_by_hostport:
+                proxy = self.proxies_by_hostport[hostport]
+        return proxy
+
     def mark_dead(self, proxy, _time=None):
         """ Mark a proxy as dead """
         if proxy not in self.proxies:
+            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
             return
 
         if proxy in self.good:
@@ -70,6 +92,7 @@ class Proxies(object):
     def mark_good(self, proxy):
         """ Mark a proxy as good """
         if proxy not in self.proxies:
+            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
             return
 
         if proxy not in self.good:
