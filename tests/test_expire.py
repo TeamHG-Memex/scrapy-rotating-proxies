@@ -24,18 +24,17 @@ def test_proxies():
     p.mark_good('bar')
     assert p.get_random() == 'bar'
 
+
 def test_auth_proxies():
-    proxy_list = ['http://foo:bar@baz:1234']
+    proxy_list = ['http://foo:bar@baz:1234', 'http://egg:1234']
     p = Proxies(proxy_list)
-
-    hostport = p._extract_hostport('zot:4321')
-    assert hostport == 'zot:4321'
-
-    hostport = p._extract_hostport('http://foo:bar@baz:1234')
-    assert hostport == 'baz:1234'
 
     proxy = p.get_proxy('http://baz:1234')
     assert proxy in proxy_list
+
+    proxy = p.get_proxy('http://egg:1234')
+    assert proxy in proxy_list
+
 
 def test_reanimate_reset():
     p = Proxies(['foo', 'bar', 'baz'])

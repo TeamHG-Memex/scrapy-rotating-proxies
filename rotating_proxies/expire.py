@@ -7,12 +7,10 @@ import math
 
 import attr
 
+from .utils import extract_proxy_hostport
+
 logger = logging.getLogger(__name__)
 
-try:
-    from urllib2 import _parse_proxy
-except ImportError:
-    from urllib.request import _parse_proxy
 
 class Proxies(object):
     """
@@ -36,10 +34,10 @@ class Proxies(object):
     """
     def __init__(self, proxy_list, backoff=None):
         self.proxies = {url: ProxyState() for url in proxy_list}
-        self.proxies_by_hostport = {}
-        for proxy in proxy_list:
-            self.proxies_by_hostport[self._extract_hostport(proxy)] = proxy
-
+        self.proxies_by_hostport = {
+            extract_proxy_hostport(proxy): proxy
+            for proxy in self.proxies
+        }
         self.unchecked = set(self.proxies.keys())
         self.good = set()
         self.dead = set()
@@ -47,10 +45,6 @@ class Proxies(object):
         if backoff is None:
             backoff = exp_backoff_full_jitter
         self.backoff = backoff
-
-    def _extract_hostport(self, proxy):
-        """ Return the hostport component from a given proxy """
-        return _parse_proxy(proxy)[3]
 
     def get_random(self):
         """ Return a random available proxy (either good or unchecked) """
@@ -60,13 +54,15 @@ class Proxies(object):
         return random.choice(available)
 
     def get_proxy(self, proxy_address):
-        """ Return complete proxy key associated with a given hostport """
-        proxy = None
-        if proxy_address:
-            hostport = self._extract_hostport(proxy_address)
-            if hostport in self.proxies_by_hostport:
-                proxy = self.proxies_by_hostport[hostport]
-        return proxy
+        """
+        Return complete proxy name associated with a hostport of a given
+        ``proxy_address``. If ``proxy_address`` is unkonwn or empty,
+        return None.
+        """
+        if not proxy_address:
+            return None
+        hostport = extract_proxy_hostport(proxy_address)
+        return self.proxies_by_hostport.get(hostport, None)
 
     def mark_dead(self, proxy, _time=None):
         """ Mark a proxy as dead """
