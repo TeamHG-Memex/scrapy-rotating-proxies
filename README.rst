@@ -133,7 +133,8 @@ Non-working proxies could become alive again after some time.
 ``scrapy-rotating-proxies`` uses a randomized exponential backoff for these
 checks - first check happens soon, if it still fails then next check is
 delayed further, etc. Use ``ROTATING_PROXY_BACKOFF_BASE`` to adjust the
-initial delay (by default it is random, from0 to 5 minutes).
+initial delay (by default it is random, from 0 to 5 minutes). The randomized
+exponential backoff is capped by ``ROTATING_PROXY_BACKOFF_CAP``.
 
 Settings
 --------
@@ -155,6 +156,8 @@ Settings
   value for certain pages if you're sure they should work.
 * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
   Default is 300 (i.e. 5 min).
+* ``ROTATING_PROXY_BACKOFF_CAP`` - backoff time cap, in seconds.
+  Default is 3600 (i.e. 60 min).
 * ``ROTATING_PROXY_BAN_POLICY`` - path to a ban detection policy.
   Default is ``'rotating_proxies.policy.BanDetectionPolicy'``.
 
