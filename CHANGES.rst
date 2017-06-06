@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.4 (2017-06-06)
+----------------
+
+* ``ROTATING_PROXY_BACKOFF_CAP`` option allows to change max backoff time
+  from the default 1 hour.
+
 0.3.2 (2017-06-05)
 ------------------
 
