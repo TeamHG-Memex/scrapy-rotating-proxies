@@ -58,7 +58,7 @@ class RotatingProxyMiddleware(object):
       ``ROTATING_PROXY_PAGE_RETRY_TIMES`` alive proxies. Default: 5.
     * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
       Default is 300 (i.e. 5 min).
-    * ``ROTATING_PROXY_BACKOFF_CAP`` - base backoff cap, in seconds.
+    * ``ROTATING_PROXY_BACKOFF_CAP`` - backoff time cap, in seconds.
       Default is 3600 (i.e. 60 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,

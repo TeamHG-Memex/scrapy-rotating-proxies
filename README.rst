@@ -156,7 +156,7 @@ Settings
   value for certain pages if you're sure they should work.
 * ``ROTATING_PROXY_BACKOFF_BASE`` - base backoff time, in seconds.
   Default is 300 (i.e. 5 min).
-* ``ROTATING_PROXY_BACKOFF_CAP`` - base backoff cap, in seconds.
+* ``ROTATING_PROXY_BACKOFF_CAP`` - backoff time cap, in seconds.
   Default is 3600 (i.e. 60 min).
 * ``ROTATING_PROXY_BAN_POLICY`` - path to a ban detection policy.
   Default is ``'rotating_proxies.policy.BanDetectionPolicy'``.
