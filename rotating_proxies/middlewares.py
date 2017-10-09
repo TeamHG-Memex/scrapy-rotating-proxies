@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import logging
+import codecs
 from functools import partial
 from six.moves.urllib.parse import urlsplit
 
@@ -46,6 +47,7 @@ class RotatingProxyMiddleware(object):
     Settings:
 
     * ``ROTATING_PROXY_LIST``  - a list of proxies to choose from;
+    * ``ROTATING_PROXY_LIST_PATH``  - path to a file with a list of proxies;
     * ``ROTATING_PROXY_LOGSTATS_INTERVAL`` - stats logging interval in seconds,
       30 by default;
     * ``ROTATING_PROXY_CLOSE_SPIDER`` - When True, spider is stopped if
@@ -75,7 +77,12 @@ class RotatingProxyMiddleware(object):
     @classmethod
     def from_crawler(cls, crawler):
         s = crawler.settings
-        proxy_list = s.getlist('ROTATING_PROXY_LIST')
+        proxy_path = s.get('ROTATING_PROXY_LIST_PATH', None)
+        if proxy_path is not None:
+            with codecs.open(proxy_path, 'r', encoding='utf8') as f:
+                proxy_list = [line.strip() for line in f if line.strip()]
+        else:
+            proxy_list = s.getlist('ROTATING_PROXY_LIST')
         if not proxy_list:
             raise NotConfigured()
         mw = cls(

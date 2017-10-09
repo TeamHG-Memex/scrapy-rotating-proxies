@@ -38,15 +38,13 @@ Add ``ROTATING_PROXY_LIST`` option with a list of proxies to settings.py::
         # ...
     ]
 
-You can load it from file if needed::
+As an alternative, you can specify a ``ROTATING_PROXY_LIST_PATH`` options
+with a path to a file with proxies, one per line::
 
-    def load_lines(path):
-        with open(path, 'rb') as f:
-            return [line.strip() for line in
-                    f.read().decode('utf8').splitlines()
-                    if line.strip()]
+   ROTATING_PROXY_LIST_PATH = '/my/path/proxies.txt'
 
-    ROTATING_PROXY_LIST = load_lines('/my/path/proxies.txt')
+``ROTATING_PROXY_LIST_PATH`` takes precedence over ``ROTATING_PROXY_LIST``
+if both options are present.
 
 Then add rotating_proxies middlewares to your DOWNLOADER_MIDDLEWARES::
 
@@ -58,7 +56,7 @@ Then add rotating_proxies middlewares to your DOWNLOADER_MIDDLEWARES::
     }
 
 After this all requests will be proxied using one of the proxies from
-the ``ROTATING_PROXY_LIST``.
+the ``ROTATING_PROXY_LIST`` / ``ROTATING_PROXY_LIST_PATH``.
 
 Requests with "proxy" set in their meta are not handled by
 scrapy-rotating-proxies. To disable proxying for a request set
@@ -140,6 +138,7 @@ Settings
 --------
 
 * ``ROTATING_PROXY_LIST``  - a list of proxies to choose from;
+* ``ROTATING_PROXY_LIST_PATH``  - path to a file with a list of proxies;
 * ``ROTATING_PROXY_LOGSTATS_INTERVAL`` - stats logging interval in seconds,
   30 by default;
 * ``ROTATING_PROXY_CLOSE_SPIDER`` - When True, spider is stopped if
