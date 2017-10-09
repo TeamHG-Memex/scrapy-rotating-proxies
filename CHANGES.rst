@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+0.5 (2017-10-09)
+----------------
+
+* ``ROTATING_PROXY_LIST_PATH`` option allows to pass file name
+  with a proxy list.
+
 0.4 (2017-06-06)
 ----------------
 
