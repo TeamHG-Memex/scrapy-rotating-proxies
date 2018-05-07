@@ -13,7 +13,6 @@ from twisted.internet import task
 
 from .expire import Proxies, exp_backoff_full_jitter
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -64,15 +63,17 @@ class RotatingProxyMiddleware(object):
       Default is 3600 (i.e. 60 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_proxies_to_try, backoff_base, backoff_cap):
-
+                 max_proxies_to_try, backoff_base, backoff_cap,
+                 scrapystats_interval, crawler=None):
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
                                backoff=backoff)
         self.logstats_interval = logstats_interval
+        self.scrapystats_interval = scrapystats_interval
         self.reanimate_interval = 5
         self.stop_if_no_proxies = stop_if_no_proxies
         self.max_proxies_to_try = max_proxies_to_try
+        self.crawler = crawler
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -91,7 +92,9 @@ class RotatingProxyMiddleware(object):
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
             max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300),
-            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600)
+            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
+            scrapystats_interval=s.getfloat('ROTATING_PROXY_SCRAPYSTATS_INTERVAL', 30),
+            crawler=crawler,
         )
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
@@ -104,6 +107,8 @@ class RotatingProxyMiddleware(object):
         self.log_task.start(self.logstats_interval, now=True)
         self.reanimate_task = task.LoopingCall(self.reanimate_proxies)
         self.reanimate_task.start(self.reanimate_interval, now=False)
+        self.stats_task = task.LoopingCall(self.update_scrapystats)
+        self.stats_task.start(self.scrapystats_interval, now=True)
 
     def reanimate_proxies(self):
         n_reanimated = self.proxies.reanimate()
@@ -187,6 +192,19 @@ class RotatingProxyMiddleware(object):
 
     def log_stats(self):
         logger.info('%s' % self.proxies)
+
+    def update_scrapystats(self):
+        if not self.crawler:
+            return
+        stats = dict(
+            good=len(self.proxies.good),
+            dead=len(self.proxies.dead),
+            unchecked=len(self.proxies.unchecked) - len(self.proxies.reanimated),
+            reanimated=len(self.proxies.reanimated),
+            mean_backoff=int(self.proxies.mean_backoff_time),
+        )
+        for stat, value in stats.items():
+            self.crawler.stats.set_value('proxies/{}'.format(stat), value)
 
     @classmethod
     def cleanup_proxy_list(cls, proxy_list):
