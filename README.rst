@@ -185,5 +185,5 @@ To run tests, install tox_ and run ``tox`` from the source checkout.
 ----
 
 .. image:: https://hyperiongray.s3.amazonaws.com/define-hg.svg
-	:target: https://hyperiongray.com/?pk_campaign=github&pk_kwd=scrapy-rotating-proxies
+	:target: https://www.hyperiongray.com/?pk_campaign=github&pk_kwd=scrapy-rotating-proxies
 	:alt: define hyperiongray
