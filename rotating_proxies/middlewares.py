@@ -168,8 +168,8 @@ class RotatingProxyMiddleware(object):
             self.stats.set_value('proxies/dead', len(self.proxies.dead))
             return self._retry(request, spider)
         elif ban is False:
-            self.stats.set_value('proxies/good', len(self.proxies.dead))
             self.proxies.mark_good(proxy)
+            self.stats.set_value('proxies/good', len(self.proxies.dead))
 
     def _retry(self, request, spider):
         retries = request.meta.get('proxy_retry_times', 0) + 1
