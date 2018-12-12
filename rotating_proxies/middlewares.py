@@ -64,7 +64,7 @@ class RotatingProxyMiddleware(object):
       Default is 3600 (i.e. 60 min).
     """
     def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_proxies_to_try, backoff_base, backoff_cap):
+                 max_proxies_to_try, backoff_base, backoff_cap, crawler):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
@@ -73,6 +73,8 @@ class RotatingProxyMiddleware(object):
         self.reanimate_interval = 5
         self.stop_if_no_proxies = stop_if_no_proxies
         self.max_proxies_to_try = max_proxies_to_try
+        self.crawler = crawler
+        self.stats = crawler.stats
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -91,7 +93,8 @@ class RotatingProxyMiddleware(object):
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
             max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300),
-            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600)
+            backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
+            crawler=crawler,
         )
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
@@ -156,11 +159,16 @@ class RotatingProxyMiddleware(object):
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
+        self.stats.set_value('proxies/unchecked', len(self.proxies.unchecked) - len(self.proxies.reanimated))
+        self.stats.set_value('proxies/reanimated', len(self.proxies.reanimated))
+        self.stats.set_value('proxies/mean_backoff', int(self.proxies.mean_backoff_time))
         ban = request.meta.get('_ban', None)
         if ban is True:
             self.proxies.mark_dead(proxy)
+            self.stats.set_value('proxies/dead', len(self.proxies.dead))
             return self._retry(request, spider)
         elif ban is False:
+            self.stats.set_value('proxies/good', len(self.proxies.dead))
             self.proxies.mark_good(proxy)
 
     def _retry(self, request, spider):
