@@ -73,7 +73,6 @@ class RotatingProxyMiddleware(object):
         self.reanimate_interval = 5
         self.stop_if_no_proxies = stop_if_no_proxies
         self.max_proxies_to_try = max_proxies_to_try
-        self.crawler = crawler
         self.stats = crawler.stats
 
     @classmethod
@@ -159,9 +158,9 @@ class RotatingProxyMiddleware(object):
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
-        self.stats.set_value('proxies/unchecked', len(self.proxies.unchecked) - len(self.proxies.reanimated))
+        self.stats.set_value('proxies/unchecked', len(self.proxies.unchecked))
         self.stats.set_value('proxies/reanimated', len(self.proxies.reanimated))
-        self.stats.set_value('proxies/mean_backoff', int(self.proxies.mean_backoff_time))
+        self.stats.set_value('proxies/mean_backoff', self.proxies.mean_backoff_time)
         ban = request.meta.get('_ban', None)
         if ban is True:
             self.proxies.mark_dead(proxy)
