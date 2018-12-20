@@ -158,7 +158,7 @@ class RotatingProxyMiddleware(object):
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
         if not (proxy and request.meta.get('_rotating_proxy')):
             return
-        self.stats.set_value('proxies/unchecked', len(self.proxies.unchecked))
+        self.stats.set_value('proxies/unchecked', len(self.proxies.unchecked) - len(self.proxies.reanimated))
         self.stats.set_value('proxies/reanimated', len(self.proxies.reanimated))
         self.stats.set_value('proxies/mean_backoff', self.proxies.mean_backoff_time)
         ban = request.meta.get('_ban', None)
