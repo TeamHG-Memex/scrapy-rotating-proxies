@@ -1,6 +1,17 @@
 CHANGES
 =======
 
+0.6 (2018-12-28)
+----------------
+
+Proxy information is added to scrapy stats:
+
+* proxies/unchecked
+* proxies/reanimated
+* proxies/dead
+* proxies/good
+* proxies/mean_backoff
+
 0.5 (2017-10-09)
 ----------------
 
