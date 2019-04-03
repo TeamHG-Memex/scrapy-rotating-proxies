@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+0.6.1 (2019-04-03)
+------------------
+
+* Fixed incorrect "proxies/good" stats values.
+
 0.6 (2018-12-28)
 ----------------
 
