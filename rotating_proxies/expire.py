@@ -121,7 +121,7 @@ class Proxies(object):
     @property
     def mean_backoff_time(self):
         if not self.dead:
-            return 0
+            return 0.0
         total_backoff = sum(self.proxies[p].backoff_time for p in self.dead)
         return float(total_backoff) / len(self.dead)
 
