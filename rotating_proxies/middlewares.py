@@ -68,6 +68,7 @@ class RotatingProxyMiddleware(object):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
+                               crawler=crawler,
                                backoff=backoff)
         self.logstats_interval = logstats_interval
         self.reanimate_interval = 5
@@ -95,6 +96,10 @@ class RotatingProxyMiddleware(object):
             backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
             crawler=crawler,
         )
+        crawler.signals.connect(mw.proxies.add,
+                                signal="ADD_PROXY")
+        crawler.signals.connect(mw.proxies.remove,
+                                signal="REMOVE_PROXY")
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
         crawler.signals.connect(mw.engine_stopped,
@@ -220,19 +225,19 @@ class BanDetectionMiddleware(object):
 
     By default, client is considered banned if a request failed, and alive
     if a response was received. You can override ban detection method by
-    passing a path to a custom BanDectionPolicy in 
+    passing a path to a custom BanDectionPolicy in
     ``ROTATING_PROXY_BAN_POLICY``, e.g.::
-      
+
     ROTATING_PROXY_BAN_POLICY = 'myproject.policy.MyBanPolicy'
-    
-    The policy must be a class with ``response_is_ban``  
-    and ``exception_is_ban`` methods. These methods can return True 
+
+    The policy must be a class with ``response_is_ban``
+    and ``exception_is_ban`` methods. These methods can return True
     (ban detected), False (not a ban) or None (unknown). It can be convenient
     to subclass and modify default BanDetectionPolicy::
-        
+
         # myproject/policy.py
         from rotating_proxies.policy import BanDetectionPolicy
-        
+
         class MyPolicy(BanDetectionPolicy):
             def response_is_ban(self, request, response):
                 # use default rules, but also consider HTTP 200 responses
@@ -240,12 +245,12 @@ class BanDetectionMiddleware(object):
                 ban = super(MyPolicy, self).response_is_ban(request, response)
                 ban = ban or b'captcha' in response.body
                 return ban
-                
+
             def exception_is_ban(self, request, exception):
                 # override method completely: don't take exceptions in account
                 return None
-        
-    Instead of creating a policy you can also implement ``response_is_ban`` 
+
+    Instead of creating a policy you can also implement ``response_is_ban``
     and ``exception_is_ban`` methods as spider methods, for example::
 
         class MySpider(scrapy.Spider):
@@ -256,7 +261,7 @@ class BanDetectionMiddleware(object):
 
             def exception_is_ban(self, request, exception):
                 return None
-     
+
     """
     def __init__(self, stats, policy):
         self.stats = stats
