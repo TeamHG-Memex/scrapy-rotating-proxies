@@ -75,6 +75,9 @@ class RotatingProxyMiddleware(object):
         self.max_proxies_to_try = max_proxies_to_try
         self.stats = crawler.stats
 
+        self.log_task = None
+        self.reanimate_task = None
+
     @classmethod
     def from_crawler(cls, crawler):
         s = crawler.settings
@@ -102,10 +105,13 @@ class RotatingProxyMiddleware(object):
         return mw
 
     def engine_started(self):
-        self.log_task = task.LoopingCall(self.log_stats)
-        self.log_task.start(self.logstats_interval, now=True)
-        self.reanimate_task = task.LoopingCall(self.reanimate_proxies)
-        self.reanimate_task.start(self.reanimate_interval, now=False)
+        if self.logstats_interval:
+            self.log_task = task.LoopingCall(self.log_stats)
+            self.log_task.start(self.logstats_interval, now=True)
+
+        if self.reanimate_interval:
+            self.reanimate_task = task.LoopingCall(self.reanimate_proxies)
+            self.reanimate_task.start(self.reanimate_interval, now=False)
 
     def reanimate_proxies(self):
         n_reanimated = self.proxies.reanimate()
@@ -114,9 +120,10 @@ class RotatingProxyMiddleware(object):
                          n_reanimated)
 
     def engine_stopped(self):
-        if self.log_task.running:
+        if self.log_task and self.log_task.running:
             self.log_task.stop()
-        if self.reanimate_task.running:
+
+        if self.reanimate_task and self.reanimate_task.running:
             self.reanimate_task.stop()
 
     def process_request(self, request, spider):
@@ -220,19 +227,19 @@ class BanDetectionMiddleware(object):
 
     By default, client is considered banned if a request failed, and alive
     if a response was received. You can override ban detection method by
-    passing a path to a custom BanDectionPolicy in 
+    passing a path to a custom BanDectionPolicy in
     ``ROTATING_PROXY_BAN_POLICY``, e.g.::
-      
+
     ROTATING_PROXY_BAN_POLICY = 'myproject.policy.MyBanPolicy'
-    
-    The policy must be a class with ``response_is_ban``  
-    and ``exception_is_ban`` methods. These methods can return True 
+
+    The policy must be a class with ``response_is_ban``
+    and ``exception_is_ban`` methods. These methods can return True
     (ban detected), False (not a ban) or None (unknown). It can be convenient
     to subclass and modify default BanDetectionPolicy::
-        
+
         # myproject/policy.py
         from rotating_proxies.policy import BanDetectionPolicy
-        
+
         class MyPolicy(BanDetectionPolicy):
             def response_is_ban(self, request, response):
                 # use default rules, but also consider HTTP 200 responses
@@ -240,12 +247,12 @@ class BanDetectionMiddleware(object):
                 ban = super(MyPolicy, self).response_is_ban(request, response)
                 ban = ban or b'captcha' in response.body
                 return ban
-                
+
             def exception_is_ban(self, request, exception):
                 # override method completely: don't take exceptions in account
                 return None
-        
-    Instead of creating a policy you can also implement ``response_is_ban`` 
+
+    Instead of creating a policy you can also implement ``response_is_ban``
     and ``exception_is_ban`` methods as spider methods, for example::
 
         class MySpider(scrapy.Spider):
@@ -256,7 +263,7 @@ class BanDetectionMiddleware(object):
 
             def exception_is_ban(self, request, exception):
                 return None
-     
+
     """
     def __init__(self, stats, policy):
         self.stats = stats
