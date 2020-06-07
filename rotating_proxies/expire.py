@@ -67,13 +67,13 @@ class Proxies(object):
     def mark_dead(self, proxy, _time=None):
         """ Mark a proxy as dead """
         if proxy not in self.proxies:
-            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
+            logger.warn("Proxy <%s> was not found in proxies list" % self._clean_proxy(proxy))
             return
 
         if proxy in self.good:
-            logger.debug("GOOD proxy became DEAD: <%s>" % proxy)
+            logger.debug("GOOD proxy became DEAD: <%s>" % self._clean_proxy(proxy))
         else:
-            logger.debug("Proxy <%s> is DEAD" % proxy)
+            logger.debug("Proxy <%s> is DEAD" % self._clean_proxy(proxy))
 
         self.unchecked.discard(proxy)
         self.good.discard(proxy)
@@ -88,11 +88,11 @@ class Proxies(object):
     def mark_good(self, proxy):
         """ Mark a proxy as good """
         if proxy not in self.proxies:
-            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
+            logger.warn("Proxy <%s> was not found in proxies list" % self._clean_proxy(proxy))
             return
 
         if proxy not in self.good:
-            logger.debug("Proxy <%s> is GOOD" % proxy)
+            logger.debug("Proxy <%s> is GOOD" % self._clean_proxy(proxy))
 
         self.unchecked.discard(proxy)
         self.dead.discard(proxy)
@@ -117,6 +117,10 @@ class Proxies(object):
         for proxy in list(self.dead):
             self.dead.remove(proxy)
             self.unchecked.add(proxy)
+
+    def _clean_proxy(self, proxy):
+        """ Clean proxy so that it can be safely used in logs """
+        return extract_proxy_hostport(proxy)
 
     @property
     def mean_backoff_time(self):
