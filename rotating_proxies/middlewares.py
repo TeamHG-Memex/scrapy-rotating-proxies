@@ -68,6 +68,7 @@ class RotatingProxyMiddleware(object):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
+                               crawler=crawler,
                                backoff=backoff)
         self.logstats_interval = logstats_interval
         self.reanimate_interval = 5
@@ -98,6 +99,10 @@ class RotatingProxyMiddleware(object):
             backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
             crawler=crawler,
         )
+        crawler.signals.connect(mw.proxies.add,
+                                signal="ADD_PROXY")
+        crawler.signals.connect(mw.proxies.remove,
+                                signal="REMOVE_PROXY")
         crawler.signals.connect(mw.engine_started,
                                 signal=signals.engine_started)
         crawler.signals.connect(mw.engine_stopped,

@@ -23,7 +23,7 @@ class Proxies(object):
     * unchecked.
 
     Initially, all proxies are in 'unchecked' state.
-    When a request using a proxy is successful, this proxy moves to 'good'
+    When a request using scrapera proxy is successful, this proxy moves to 'good'
     state. When a request using a proxy fails, proxy moves to 'dead' state.
 
     For crawling only 'good' and 'unchecked' proxies are used.
@@ -32,7 +32,7 @@ class Proxies(object):
     'reanimated'). This timeout increases exponentially after each
     unsuccessful attempt to use a proxy.
     """
-    def __init__(self, proxy_list, backoff=None):
+    def __init__(self, proxy_list, backoff=None, crawler=None):
         self.proxies = {url: ProxyState() for url in proxy_list}
         self.proxies_by_hostport = {
             extract_proxy_hostport(proxy): proxy
@@ -45,6 +45,8 @@ class Proxies(object):
         if backoff is None:
             backoff = exp_backoff_full_jitter
         self.backoff = backoff
+
+        self.crawler = crawler
 
     def get_random(self):
         """ Return a random available proxy (either good or unchecked) """
@@ -72,8 +74,12 @@ class Proxies(object):
 
         if proxy in self.good:
             logger.debug("GOOD proxy became DEAD: <%s>" % proxy)
+
         else:
             logger.debug("Proxy <%s> is DEAD" % proxy)
+
+        if self.crawler:
+            self.crawler.signals.send_catch_log("DEAD_PROXY", proxy=proxy)
 
         self.unchecked.discard(proxy)
         self.good.discard(proxy)
@@ -93,6 +99,9 @@ class Proxies(object):
 
         if proxy not in self.good:
             logger.debug("Proxy <%s> is GOOD" % proxy)
+
+        if self.crawler:
+            self.crawler.signals.send_catch_log("GOOD_PROXY", proxy=proxy)
 
         self.unchecked.discard(proxy)
         self.dead.discard(proxy)
@@ -117,6 +126,34 @@ class Proxies(object):
         for proxy in list(self.dead):
             self.dead.remove(proxy)
             self.unchecked.add(proxy)
+
+    def add(self, proxy):
+        """ Add a proxy to the proxy list """
+        if proxy in self.proxies:
+            logger.warn("Proxy <%s> is already in proxies list" % proxy)
+            return
+
+        hostport = extract_proxy_hostport(proxy)
+        self.proxies[proxy] = ProxyState()
+        self.proxies_by_hostport[hostport] = proxy
+        self.unchecked.add(proxy)
+
+    def remove(self, proxy):
+        """
+        Permanently remove a proxy. The proxy cannot be recovered, except
+        if 'add()' is called.
+        """
+        if proxy not in self.proxies:
+            logger.warn("Proxy <%s> was not found in proxies list" % proxy)
+            return
+
+        logger.debug("Removing proxy <%s> from proxies list" % proxy)
+        hostport = extract_proxy_hostport(proxy)
+        self.unchecked.discard(proxy)
+        self.good.discard(proxy)
+        self.dead.discard(proxy)
+        del self.proxies[proxy]
+        del self.proxies_by_hostport[hostport]
 
     @property
     def mean_backoff_time(self):

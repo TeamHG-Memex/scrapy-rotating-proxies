@@ -24,6 +24,18 @@ def test_proxies():
     p.mark_good('bar')
     assert p.get_random() == 'bar'
 
+    p.remove('foo')
+    assert p.get_random() == 'bar'
+
+    p.add('baz')
+    assert p.get_random() == 'bar'
+
+    p.remove('bar')
+    p.add('qux')
+    p.mark_good('qux')
+    assert p.get_random() == 'qux'
+
+
 
 def test_auth_proxies():
     proxy_list = ['http://foo:bar@baz:1234', 'http://egg:1234']
