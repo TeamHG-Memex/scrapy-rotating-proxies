@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import logging
 import codecs
 from functools import partial
+import random
+
 from six.moves.urllib.parse import urlsplit
 
 from scrapy.exceptions import CloseSpider, NotConfigured
@@ -63,16 +65,19 @@ class RotatingProxyMiddleware(object):
     * ``ROTATING_PROXY_BACKOFF_CAP`` - backoff time cap, in seconds.
       Default is 3600 (i.e. 60 min).
     """
-    def __init__(self, proxy_list, logstats_interval, stop_if_no_proxies,
-                 max_proxies_to_try, backoff_base, backoff_cap, crawler):
+    def __init__(self, proxy_list, priority_proxy_list, logstats_interval, stop_if_no_proxies,
+                 max_proxies_to_try, backoff_base, backoff_cap, priority_weight, crawler):
 
         backoff = partial(exp_backoff_full_jitter, base=backoff_base, cap=backoff_cap)
         self.proxies = Proxies(self.cleanup_proxy_list(proxy_list),
                                backoff=backoff)
+        self.priority_proxies = Proxies(self.cleanup_proxy_list(priority_proxy_list),
+                                        backoff=backoff)
         self.logstats_interval = logstats_interval
         self.reanimate_interval = 5
         self.stop_if_no_proxies = stop_if_no_proxies
         self.max_proxies_to_try = max_proxies_to_try
+        self.priority_weight = priority_weight
         self.stats = crawler.stats
 
         self.log_task = None
@@ -81,21 +86,35 @@ class RotatingProxyMiddleware(object):
     @classmethod
     def from_crawler(cls, crawler):
         s = crawler.settings
+
         proxy_path = s.get('ROTATING_PROXY_LIST_PATH', None)
         if proxy_path is not None:
             with codecs.open(proxy_path, 'r', encoding='utf8') as f:
                 proxy_list = [line.strip() for line in f if line.strip()]
         else:
             proxy_list = s.getlist('ROTATING_PROXY_LIST')
+
+        priority_proxy_path = s.get('ROTATING_PROXY_PRIORITY_LIST_PATH', None)
+        if priority_proxy_path is not None:
+            with codecs.open(priority_proxy_path, 'r', encoding='utf8') as f:
+                priority_proxy_list = [line.strip() for line in f if line.strip()]
+        else:
+            priority_proxy_list = s.getlist('ROTATING_PROXY_PRIORITY_LIST')
+            if not priority_proxy_list:
+                priority_proxy_list = []
+
         if not proxy_list:
             raise NotConfigured()
+
         mw = cls(
             proxy_list=proxy_list,
+            priority_proxy_list=priority_proxy_list,
             logstats_interval=s.getfloat('ROTATING_PROXY_LOGSTATS_INTERVAL', 30),
             stop_if_no_proxies=s.getbool('ROTATING_PROXY_CLOSE_SPIDER', False),
             max_proxies_to_try=s.getint('ROTATING_PROXY_PAGE_RETRY_TIMES', 5),
             backoff_base=s.getfloat('ROTATING_PROXY_BACKOFF_BASE', 300),
             backoff_cap=s.getfloat('ROTATING_PROXY_BACKOFF_CAP', 3600),
+            priority_weight=s.getfloat('ROTATING_PROXY_PRIORITY_WEIGHT', 0),
             crawler=crawler,
         )
         crawler.signals.connect(mw.engine_started,
@@ -115,9 +134,15 @@ class RotatingProxyMiddleware(object):
 
     def reanimate_proxies(self):
         n_reanimated = self.proxies.reanimate()
+        n_priority_reanimated = self.priority_proxies.reanimate()
+
         if n_reanimated:
             logger.debug("%s proxies moved from 'dead' to 'reanimated'",
                          n_reanimated)
+
+        if n_priority_reanimated:
+            logger.debug("%s priority_proxies moved from 'dead' to 'reanimated'",
+                         n_priority_reanimated)
 
     def engine_stopped(self):
         if self.log_task and self.log_task.running:
@@ -129,22 +154,44 @@ class RotatingProxyMiddleware(object):
     def process_request(self, request, spider):
         if 'proxy' in request.meta and not request.meta.get('_rotating_proxy'):
             return
-        proxy = self.proxies.get_random()
-        if not proxy:
-            if self.stop_if_no_proxies:
-                raise CloseSpider("no_proxies")
-            else:
-                logger.warn("No proxies available; marking all proxies "
-                            "as unchecked")
-                self.proxies.reset()
-                proxy = self.proxies.get_random()
-                if proxy is None:
-                    logger.error("No proxies available even after a reset.")
-                    raise CloseSpider("no_proxies_after_reset")
 
-        request.meta['proxy'] = proxy
+        proxy = self.proxies.get_random()
+        priority_proxy = self.priority_proxies.get_random()
+
+        if not proxy and not priority_proxy:
+            if self.stop_if_no_proxies:
+                raise CloseSpider("no_proxies_and_priority_proxies")
+            else:
+                logger.warn("No proxies and priority_proxies available; marking all proxies as unchecked")
+
+                self.proxies.reset()
+                self.priority_proxies.reset()
+
+                proxy = self.proxies.get_random()
+                priority_proxy = self.priority_proxies.get_random()
+
+                if not proxy and not priority_proxy:
+                    logger.error("No proxies and priority_proxies available even after a reset.")
+                    raise CloseSpider("no_proxies_and_priority_proxies_after_reset")
+
+        request.meta['proxy'] = self.get_weighted_proxy(proxy, priority_proxy)
         request.meta['download_slot'] = self.get_proxy_slot(proxy)
         request.meta['_rotating_proxy'] = True
+
+    def get_weighted_proxy(self, proxy, priority_proxy):
+        if not priority_proxy:
+            return proxy
+
+        if 0.0 <= self.priority_weight <= 1.0:
+            proxy_weight = int((1 - self.priority_weight) * 10)
+            proxy_priority_weight = int(self.priority_weight * 10)
+        else:
+            raise CloseSpider("priority_weight_out_of_limits")
+
+        weighted_list = [proxy] * proxy_weight + [priority_proxy] * proxy_priority_weight
+        weighted_proxy = random.choice(weighted_list)
+
+        return weighted_proxy
 
     def get_proxy_slot(self, proxy):
         """
@@ -163,19 +210,35 @@ class RotatingProxyMiddleware(object):
 
     def _handle_result(self, request, spider):
         proxy = self.proxies.get_proxy(request.meta.get('proxy', None))
-        if not (proxy and request.meta.get('_rotating_proxy')):
+        priority_proxy = self.priority_proxies.get_proxy(request.meta.get('proxy', None))
+
+        if not (proxy and priority_proxy and request.meta.get('_rotating_proxy')):
             return
+
         self.stats.set_value('proxies/unchecked', len(self.proxies.unchecked) - len(self.proxies.reanimated))
         self.stats.set_value('proxies/reanimated', len(self.proxies.reanimated))
         self.stats.set_value('proxies/mean_backoff', self.proxies.mean_backoff_time)
+
+        self.stats.set_value('priority_proxies/unchecked', len(self.priority_proxies.unchecked) - len(self.priority_proxies.reanimated))
+        self.stats.set_value('priority_proxies/reanimated', len(self.priority_proxies.reanimated))
+        self.stats.set_value('priority_proxies/mean_backoff', self.priority_proxies.mean_backoff_time)
+
         ban = request.meta.get('_ban', None)
         if ban is True:
-            self.proxies.mark_dead(proxy)
-            self.stats.set_value('proxies/dead', len(self.proxies.dead))
+            if proxy in self.proxies.proxies:
+                self.proxies.mark_dead(proxy)
+                self.stats.set_value('proxies/dead', len(self.proxies.dead))
+            else:
+                self.priority_proxies.mark_dead(proxy)
+                self.stats.set_value('priority_proxies/dead', len(self.priority_proxies.dead))
             return self._retry(request, spider)
         elif ban is False:
-            self.proxies.mark_good(proxy)
-            self.stats.set_value('proxies/good', len(self.proxies.good))
+            if proxy in self.proxies.proxies:
+                self.proxies.mark_good(proxy)
+                self.stats.set_value('proxies/good', len(self.proxies.good))
+            else:
+                self.priority_proxies.mark_good(proxy)
+                self.stats.set_value('priority_proxies/good', len(self.priority_proxies.good))
 
     def _retry(self, request, spider):
         retries = request.meta.get('proxy_retry_times', 0) + 1
@@ -201,6 +264,7 @@ class RotatingProxyMiddleware(object):
 
     def log_stats(self):
         logger.info('%s' % self.proxies)
+        logger.info('%s' % self.priority_proxies)
 
     @classmethod
     def cleanup_proxy_list(cls, proxy_list):
