@@ -63,6 +63,10 @@ scrapy-rotating-proxies. To disable proxying for a request set
 ``request.meta['proxy'] = None``; to set proxy explicitly use
 ``request.meta['proxy'] = "<my-proxy-address>"``.
 
+To use scrapy's http cache with rotating proxies enable ban aware caching policy that prevents caching of banned responses:
+
+    HTTPCACHE_POLICY = 'rotating_proxies.policy.BanAwareCachePolicy'
+
 
 Concurrency
 -----------
