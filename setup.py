@@ -32,7 +32,7 @@ setup(
     install_requires=[
         'attrs > 16.0.0',
         'six',
-        'typing',
+        'typing;python_version<"3.5"',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
