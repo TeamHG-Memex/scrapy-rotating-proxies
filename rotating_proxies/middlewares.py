@@ -2,8 +2,11 @@
 from __future__ import absolute_import
 import logging
 import codecs
+import re
+
 from functools import partial
 from six.moves.urllib.parse import urlsplit
+from w3lib.http import basic_auth_header
 
 from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy import signals
@@ -142,6 +145,11 @@ class RotatingProxyMiddleware(object):
                     logger.error("No proxies available even after a reset.")
                     raise CloseSpider("no_proxies_after_reset")
 
+        parts = re.match('(\w+://)([^:]+?:[^@]+?@)?(.+)', proxy)
+        if parts.group(2):
+            proxy = parts.group(3)
+            proxy_auth = basic_auth_header(*parts.group(2)[:-1].split(':'))
+            request.headers['Proxy-Authorization'] = proxy_auth
         request.meta['proxy'] = proxy
         request.meta['download_slot'] = self.get_proxy_slot(proxy)
         request.meta['_rotating_proxy'] = True
