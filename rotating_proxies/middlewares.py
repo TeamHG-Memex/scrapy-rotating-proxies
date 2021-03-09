@@ -2,8 +2,11 @@
 from __future__ import absolute_import
 import logging
 import codecs
-import re
 
+try:
+    from urllib2 import _parse_proxy
+except ImportError:
+    from urllib.request import _parse_proxy
 from functools import partial
 from six.moves.urllib.parse import urlsplit
 from w3lib.http import basic_auth_header
@@ -145,10 +148,9 @@ class RotatingProxyMiddleware(object):
                     logger.error("No proxies available even after a reset.")
                     raise CloseSpider("no_proxies_after_reset")
 
-        parts = re.match('(\w+://)([^:]+?:[^@]+?@)?(.+)', proxy)
-        if parts.group(2):
-            proxy = parts.group(3)
-            proxy_auth = basic_auth_header(*parts.group(2)[:-1].split(':'))
+        username, password = _parse_proxy(proxy)[1:3]
+        if username and password:
+            proxy_auth = basic_auth_header(username, password)
             request.headers['Proxy-Authorization'] = proxy_auth
         request.meta['proxy'] = proxy
         request.meta['download_slot'] = self.get_proxy_slot(proxy)
