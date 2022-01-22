@@ -2,6 +2,7 @@
 from setuptools import setup, find_packages
 import re
 import os
+import sys
 
 
 def get_version():
@@ -19,6 +20,15 @@ def get_long_description():
     ])
 
 
+# Do not install typing on python 3.7+
+INSTALL_REQUIRES = [
+    'attrs > 16.0.0',
+    'six',
+]
+if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and sys.version_info[1] <= 6):
+    INSTALL_REQUIRES.append("typing")
+
+
 setup(
     name='scrapy-rotating-proxies',
     version=get_version(),
@@ -29,11 +39,7 @@ setup(
     description="Rotating proxies for Scrapy",
     url='https://github.com/TeamHG-Memex/scrapy-rotating-proxies',
     packages=find_packages(exclude=['tests']),
-    install_requires=[
-        'attrs > 16.0.0',
-        'six',
-        'typing',
-    ],
+    install_requires=INSTALL_REQUIRES,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
