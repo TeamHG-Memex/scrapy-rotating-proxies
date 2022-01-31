@@ -34,7 +34,9 @@ Add ``ROTATING_PROXY_LIST`` option with a list of proxies to settings.py::
 
     ROTATING_PROXY_LIST = [
         'proxy1.com:8000',
-        'proxy2.com:8031',
+        'https://proxy2.com:8000',
+        'login:password@proxy3.com:8031',
+        'https://login:password@proxy4.com:8032',
         # ...
     ]
 
