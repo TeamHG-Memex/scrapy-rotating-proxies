@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import
 import logging
 import codecs
 from functools import partial
-from six.moves.urllib.parse import urlsplit
+from urllib.parse import urlsplit
 
 from scrapy.exceptions import CloseSpider, NotConfigured
 from scrapy import signals
