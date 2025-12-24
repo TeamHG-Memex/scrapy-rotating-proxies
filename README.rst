@@ -43,7 +43,7 @@ with a path to a file with proxies, one per line::
 
    ROTATING_PROXY_LIST_PATH = '/my/path/proxies.txt'
 
-``ROTATING_PROXY_LIST_PATH`` takes precedence over ``ROTATING_PROXY_LIST``
+NOTE: ``ROTATING_PROXY_LIST_PATH`` takes precedence over ``ROTATING_PROXY_LIST``
 if both options are present.
 
 Then add rotating_proxies middlewares to your DOWNLOADER_MIDDLEWARES::
@@ -62,6 +62,39 @@ Requests with "proxy" set in their meta are not handled by
 scrapy-rotating-proxies. To disable proxying for a request set
 ``request.meta['proxy'] = None``; to set proxy explicitly use
 ``request.meta['proxy'] = "<my-proxy-address>"``.
+
+**Switch between proxies and priority_proxies**
+
+If you want to switch between two sets of proxies, say proxies and priority_proxies
+OR free_proxies and premium_proxies OR proxies and Tor, you can make use of proxies
+and priority_proxies setup. After you're done with the above setup, then:
+
+Add ``ROTATING_PROXY_PRIORITY_LIST`` option with a list of priority_proxies to ``settings.py``::
+
+    ROTATING_PROXY_PRIORITY_LIST = [
+        'proxy1.com:8000',
+        'proxy2.com:8031',
+        # ...
+    ]
+
+As an alternative, you can specify a ``ROTATING_PROXY_PRIORITY_LIST_PATH`` option
+with a path to a file with priority_proxies, one per line::
+
+   ROTATING_PROXY_PRIORITY_LIST_PATH = '/my/path/priority_proxies.txt'
+
+NOTE: ``ROTATING_PROXY_PRIORITY_LIST_PATH`` takes precedence over ``ROTATING_PROXY_PRIORITY_LIST``
+if both options are present.
+
+Also, you must specify ``ROTATING_PROXY_PRIORITY_WEIGHT`` option defining the weight of
+priority_proxies vs. proxies. If you want proxies and priority_proxies to work in 50-50
+ratio, then you can set it to 0.5, i.e., proxies work half (50%) of the times and
+priority_proxies work half (50%) too. So, you must set this option:
+with a path to a file with priority_proxies, one per line::
+
+   ROTATING_PROXY_PRIORITY_WEIGHT = 0.5
+
+NOTE: You can set ``ROTATING_PROXY_PRIORITY_WEIGHT`` to 0 for giving 0% preference to priority_proxies and 100% weight
+to proxies OR 1 for giving 100% weight to priority_proxies.
 
 
 Concurrency
@@ -137,8 +170,13 @@ exponential backoff is capped by ``ROTATING_PROXY_BACKOFF_CAP``.
 Settings
 --------
 
-* ``ROTATING_PROXY_LIST``  - a list of proxies to choose from;
-* ``ROTATING_PROXY_LIST_PATH``  - path to a file with a list of proxies;
+* ``ROTATING_PROXY_LIST`` - a list of proxies to choose from;
+* ``ROTATING_PROXY_LIST_PATH`` - path to a file with a list of proxies;
+* ``ROTATING_PROXY_PRIORITY_LIST`` - a list of priority_proxies to choose from (optional);
+* ``ROTATING_PROXY_PRIORITY_LIST_PATH`` - path to a file with a list of priority_proxies (optional);
+* ``ROTATING_PROXY_PRIORITY_WEIGHT`` - weight for priority_proxies. Default is 0. If you set
+  ``ROTATING_PROXY_PRIORITY_LIST`` or ``ROTATING_PROXY_PRIORITY_LIST_PATH``, then you can set
+  ``ROTATING_PROXY_PRIORITY_WEIGHT = 0.5`` for 50-50 chance of using proxy vs. priority_proxy;
 * ``ROTATING_PROXY_LOGSTATS_INTERVAL`` - stats logging interval in seconds,
   30 by default;
 * ``ROTATING_PROXY_CLOSE_SPIDER`` - When True, spider is stopped if

@@ -139,6 +139,29 @@ class Proxies(object):
         )
 
 
+class PriorityProxies(Proxies):
+    """
+    Expiring priority_proxies container.
+
+    A priority_proxy can be in 3 states:
+
+    * good;
+    * dead;
+    * unchecked.
+
+    Initially, all priority_proxies are in 'unchecked' state.
+    When a request using a priority_proxy is successful, this priority_proxy moves to 'good'
+    state. When a request using a priority_proxy fails, priority_proxy moves to 'dead' state.
+
+    For crawling only 'good' and 'unchecked' priority_proxies are used.
+
+    'Dead' priority_proxies move to 'unchecked' after a timeout (they are called
+    'reanimated'). This timeout increases exponentially after each
+    unsuccessful attempt to use a priority_proxy.
+    """
+    pass
+
+
 @attr.s
 class ProxyState(object):
     failed_attempts = attr.ib(default=0)
