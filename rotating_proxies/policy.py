@@ -1,5 +1,19 @@
 # -*- coding: utf-8 -*-
 from scrapy.exceptions import IgnoreRequest
+from scrapy.extensions.httpcache import DummyPolicy
+
+
+class BanAwareCachePolicy(DummyPolicy):
+    """
+    This policy is for scrapy http caching that will prevent caching banned responses
+    Usage, in settings.py:
+        HTTPCACHE_POLICY = 'rotating_proxies.policy.BanAwareCachePolicy'
+    """
+
+    def should_cache_response(self, response, request):
+        if request.meta.get('_ban', False):
+            return False
+        return super().should_cache_response(response, request):
 
 
 class BanDetectionPolicy(object):
